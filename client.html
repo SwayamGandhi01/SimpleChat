@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Simple Chat</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+        
+        h3 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 20px;
+        }
+
+        .chat-container {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        #msg {
+            width: calc(100% - 120px);
+            padding: 10px;
+            margin-right: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+        }
+
+        #clients {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        #action {
+            padding: 10px 20px;
+            background-color: #28a745;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #action:hover {
+            background-color: #218838;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0 0 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        ul li {
+            background-color: #f8f9fa;
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            word-wrap: break-word;
+        }
+
+        .input-group {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h3>Welcome to Simple Chat</h3>
+        <select id="clients">
+            <option value="" disabled selected>Select a recipient</option>
+        </select>
+        <div class="input-group">
+            <input type="text" id="msg" placeholder="Type a message..."/>
+            <button id="action">Send</button>
+        </div>
+        <ul id="communication"></ul>
+    </div>
+
+    <script>
+        $(document).ready(function(){
+            var IO = io();
+            var selected_client = {};
+            var name = prompt('What is your name?');
+    
+            // Emit event when user joins the chat
+            IO.emit('chatJoined', name);
+    
+            // Populate the online users list in the dropdown
+            IO.on('updateMenu', (online_users) => {
+                var list_items = "<option value='' disabled selected>Select a recipient</option>";
+                online_users.forEach(function(user) {
+                    list_items += `<option value="${user.id}">${user.name}</option>`;
+                });
+                $('#clients').html(list_items);
+            });
+    
+            // Event listener for the "Send" button
+            $('#action').click(function() {
+                var message = $('#msg').val();
+                var recipientId = $('#clients').val();
+                var recipientName = $('#clients option:selected').text();
+    
+                if (!recipientId) {
+                    alert('Please select a recipient!');
+                    return;
+                }
+    
+                var data = { message: message, id: recipientId, name: recipientName };
+                IO.emit('clientMessage', data);
+            });
+    
+            // Broadcast message received
+            IO.on('broadcastMessage', (data) => {
+                var msg = `<li><strong>${data.name}:</strong> ${data.message}</li>`;
+                $('#communication').append(msg);
+            });
+    
+            // Server message (system messages)
+            IO.on('serverMessage', (data) => {
+                var msg = `<li><em>${data}</em></li>`; // Display join messages
+                $('#communication').append(msg);
+            });
+        });
+    </script>
+    
+</body>
+</html>
